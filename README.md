@@ -53,7 +53,7 @@ AF-Gate pools the features across channels and predicts channel and horizon fact
 
 ```math
 G=\sum_{m=1}^{M}\pi_m\,g_{c,m}g_{p,m}^{\top},\qquad
-\pi=\operatorname{softmax}(\rho).
+\pi=\mathrm{softmax}(\rho).
 ```
 
 Sigmoid factors and normalized head weights give $`G\in[0,1]^{N\times P}`$. The normalized forecast is
