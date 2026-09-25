@@ -1,0 +1,4 @@
+# Minimal dependencies for importing and using models/GateLinear.py.
+# Legacy baseline training may require additional packages.
+numpy
+torch
