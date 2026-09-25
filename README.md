@@ -18,7 +18,7 @@ GateLinear is a lightweight framework for multivariate long-term time-series for
 - **Compact specialization:** shared low-rank factors are modulated by channel-specific coefficients and biases.
 - **Broad evaluation:** the manuscript reports results on 13 benchmarks with horizons of 96, 192, 336, and 720.
 
-This release contains the supplied research source and manuscript. Full experiment reproduction is not yet available: the supplied snapshot omits the `run.py` entry point used by its shell scripts. See [reproducibility status](#reproducibility-status) for implementation differences and verification limits. No conference acceptance or publication status is claimed here.
+**Code availability:** The GateLinear implementation is pending public release. Currently, `models/GateLinear.py` provides only the `Model` interface; calling it raises `NotImplementedError`. The manuscript, architecture figure, and paper-reported results are available below.
 
 ## Architecture
 
@@ -66,59 +66,20 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-The dependency file covers the standalone GateLinear model. Dependencies are unpinned because the supplied snapshot does not contain a validated environment lockfile. The legacy experiment framework imports additional baseline packages; this installation is not a verified environment for every baseline.
+The dependency file includes PyTorch for the model interface. The full training environment and implementation will be provided with the public code release.
 
-### Model inference
-
-Run this Python example from the repository root. It uses synthetic inputs and randomly initialized parameters; it demonstrates the interface, not forecasting accuracy.
+### Model interface (implementation pending)
 
 ```python
-from types import SimpleNamespace
-import torch
 from models.GateLinear import Model
 
-config = SimpleNamespace(
-    seq_len=96,
-    pred_len=96,
-    enc_in=21,
-    d_model=512,
-    use_norm=1,
-    freq="h",
-)
-torch.manual_seed(2027)
-model = Model(config).eval()
-x = torch.randn(2, config.seq_len, config.enc_in)
-
-# Calendar columns: month, day, weekday, hour.
-# The hourly GateLinear embedding reads the hour column.
-marks = torch.zeros(2, config.seq_len, 4)
-marks[:, :, 3] = torch.arange(config.seq_len).remainder(24)
-
-with torch.no_grad():
-    forecast = model(x, marks)
-print(forecast.shape)  # torch.Size([2, 96, 21])
+model = Model(configs)
+# Public interface for the future implementation:
+# model(x_enc, x_mark_enc=None, x_dec=None, x_mark_dec=None)
+# Calling the model currently raises NotImplementedError.
 ```
 
-Inputs have shape `[batch, lookback, channels]`; outputs have shape `[batch, horizon, channels]`. For `freq="t"`, provide a fifth calendar column containing quarter-hour indices in `0..3`. `x_mark_enc=None` skips temporal embeddings. Decoder inputs are accepted by the model interface but are unused.
-
-### Model configuration
-
-| Setting | Default / paper value | Meaning |
-|:--|:--|:--|
-| `seq_len` | 96 in the paper | Historical input length |
-| `pred_len` | 96 / 192 / 336 / 720 | Forecast horizon |
-| `enc_in` | Dataset-dependent | Number of input channels |
-| `d_model` | 512 in the paper | Feature width $`E`$ |
-| Backbone hidden width | 128, fixed in `Backbone` | Intermediate MLP width $`D`$ |
-| `low_rank_k` | `int(0.3 * E * P / (E + P))` | Optional rank override |
-| Gate hidden width | 16, fixed by `Model` | Gate bottleneck $`R`$ |
-| Gate heads | 8 | Number of channel–horizon outer products |
-| Gate dropout | 0.1 | Dropout inside AF-Gate |
-| `use_norm` | Required config field; use `1` | Enable RevIN |
-
-With $`E=512`$, the default ranks are 24, 41, 60, and 89 for the four paper horizons. The code does not clamp the default rank to at least one; use a positive `low_rank_k` for very small custom configurations.
-
-The model also accepts `use_temporal_emb`, `use_attention`, `use_gate`, `use_shared_branch`, and `use_individual_branch`; these default to `True`. At least one prediction branch must remain enabled. These are configuration attributes, not verified command-line flags.
+The planned interface accepts inputs shaped `[batch, lookback, channels]` and returns forecasts shaped `[batch, horizon, channels]`. The current file is an interface placeholder and cannot perform training or inference.
 
 ## Main Results
 
@@ -140,7 +101,7 @@ The model also accepts `use_temporal_emb`, `use_attention`, `use_gate`, `use_sha
 | PEMS08 | **0.426** | **0.393** | 0.482 | 0.431 |
 | Exchange | 0.389 | 0.418 | **0.382** | **0.415** |
 
-Bold indicates the better value within this two-model comparison, including ties. The manuscript includes eight methods in its full table; GateLinear has the lowest reported average MSE and MAE on Weather, Traffic, Solar, and the four PEMS datasets. Results are single-seed point estimates, without uncertainty intervals.
+Bold indicates the better value within this two-model comparison, including ties. The manuscript includes eight methods in its full table; GateLinear has the lowest reported average MSE and MAE on Weather, Traffic, Solar, and the four PEMS datasets. Results are point estimates, without uncertainty intervals.
 
 ### Parameter efficiency
 
@@ -162,7 +123,7 @@ Dataset files, checkpoints, generated predictions, and training logs are exclude
 
 The supplied data factory recognizes `ETTh1`, `ETTh2`, `ETTm1`, `ETTm2`, `custom`, `Solar`, and `PEMS`. Weather, Electricity, Traffic, and Exchange use the custom CSV loader. Inspect [data_loader.py](data_provider/data_loader.py) for the expected columns, splits, and normalization of each format.
 
-The manuscript specifies Adam with $`(\beta_1,\beta_2)=(0.9,0.999)`$, epsilon $`10^{-8}`$, no weight decay, MSE loss, at most 30 epochs, early-stopping patience 5, and seed 2027 for Python, NumPy, and PyTorch.
+The manuscript specifies Adam with $`(\beta_1,\beta_2)=(0.9,0.999)`$, epsilon $`10^{-8}`$, no weight decay, MSE loss, at most 30 epochs, and early-stopping patience 5.
 
 | Dataset family | Learning rate | Batch size |
 |:--|--:|--:|
@@ -178,24 +139,15 @@ These are paper settings, not a claim that every archived script implements them
 
 ## Reproducibility Status
 
-The core GateLinear architecture is present, alongside data loaders, the experiment framework, baseline implementations, and historical scripts. The source snapshot has the following known gaps:
+The GateLinear implementation is pending public release. This repository currently exposes only its `Model` interface, alongside the manuscript and supporting research files. The model deliberately raises `NotImplementedError` when called.
 
-| Item | Current source behavior | Implication |
-|:--|:--|:--|
-| Training entry point | Scripts call `run.py`, which is absent | Restore the matching training entry point before using the scripts |
-| Script coverage | Most dataset blocks in that script are commented out | It is not a complete 13-dataset launcher |
-| Time features | `data_factory.py` forces `timeenc=1`, producing continuous features for calendar-based loaders | GateLinear expects integer calendar indices; `.long()` truncation does not recover the hour or quarter-hour |
-| Validation loader | Validation follows the training branch with shuffling and `drop_last=True` | The paper describes ordered validation with all samples retained |
-| Gate ablation | With `use_gate=False` and both branches enabled, the model returns only the shared output | This does not implement the direct-addition ablation described in the paper |
-| Environment | No original dependency lockfile was supplied | The minimal requirements added here are not a frozen reproduction environment |
-
-The original Python and shell sources are preserved in this release. These observations document the snapshot; no silent changes were made to training behavior to force agreement with the paper. Repository preparation included source inspection and syntax checks, but no training or runtime inference validation: PyTorch was unavailable in the preparation environment.
+The archived shell scripts refer to a `run.py` entry point that is not included. Full training, inference, and reproduction of the reported results are therefore not available in this release. All performance numbers above are reported by the paper, not produced by this placeholder.
 
 ## Repository Structure
 
 ```text
 GateLinear/
-├── models/GateLinear.py          # Backbone, two heads, AF-Gate, forecast interface
+├── models/GateLinear.py          # Model interface only; implementation pending release
 ├── layers/RevIN.py               # Reversible normalization
 ├── layers/                      # Shared model components
 ├── data_provider/               # Dataset readers and data factory
@@ -204,7 +156,7 @@ GateLinear/
 ├── scripts/                     # Additional experiment scripts
 ├── utils/                       # Metrics and experiment utilities
 ├── paper/GateLinear.pdf          # Supplied manuscript
-├── requirements.txt             # Minimal standalone model dependencies
+├── requirements.txt             # Model interface dependencies
 └── README.md
 ```
 
