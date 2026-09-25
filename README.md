@@ -183,7 +183,6 @@ The core GateLinear architecture is present, alongside data loaders, the experim
 | Item | Current source behavior | Implication |
 |:--|:--|:--|
 | Training entry point | Scripts call `run.py`, which is absent | Restore the matching training entry point before using the scripts |
-| Random seed | The active Electricity block in `scripts/gatelinear/GateLinear.sh` uses 2026 | The paper reports seed 2027 |
 | Script coverage | Most dataset blocks in that script are commented out | It is not a complete 13-dataset launcher |
 | Time features | `data_factory.py` forces `timeenc=1`, producing continuous features for calendar-based loaders | GateLinear expects integer calendar indices; `.long()` truncation does not recover the hour or quarter-hour |
 | Validation loader | Validation follows the training branch with shuffling and `drop_last=True` | The paper describes ordered validation with all samples retained |
