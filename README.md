@@ -22,21 +22,9 @@ This release contains the supplied research source and manuscript. Full experime
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    X[Input history] --> R[RevIN]
-    R --> T[Add temporal embeddings]
-    T --> M[Shared temporal MLP]
-    M --> A[Residual feature refinement]
-    A --> S[Shared dense head]
-    A --> I[Channel-modulated low-rank head]
-    A --> G[AF-Gate]
-    S --> F[Weighted fusion]
-    I --> F
-    G --> F
-    F --> D[Inverse RevIN]
-    D --> Y[Forecast]
-```
+![GateLinear architecture from Figure 1 of the paper](assets/architecture.png)
+
+**Figure 1. GateLinear overview.** A variable-wise MLP feeds shared and channel-modulated heads; AF-Gate fuses their forecasts before inverse RevIN. CI/CD denote channel-independent/channel-dependent processing; the shared head shares parameters.
 
 For features $`Z\in\mathbb{R}^{N\times E}`$, the two heads produce
 
