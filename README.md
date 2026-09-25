@@ -4,10 +4,6 @@
 
 ### Learning When to Share: Adaptive Channel–Horizon Sharing for Long-Term Time-Series Forecasting
 
-Shiwei Pu · Yuanjian Zhang · Jingwei Luo · Xiang Xu · Yuxun Wu · Chuanchang Liu
-
-Beijing University of Posts and Telecommunications
-
 **Shared temporal structure. Channel-specific adaptation. Input-dependent fusion.**
 
 [Paper](paper/GateLinear.pdf) · [Model](models/GateLinear.py) · [Quick Start](#quick-start) · [Results](#main-results) · [Reproducibility](#reproducibility-status)
@@ -42,29 +38,31 @@ flowchart LR
     D --> Y[Forecast]
 ```
 
-For features $Z\in\mathbb{R}^{N\times E}$, the two heads produce
+For features $`Z\in\mathbb{R}^{N\times E}`$, the two heads produce
 
-$$
-Y_{\mathrm{shared}}=ZW_{\mathrm{shared}}+b_{\mathrm{shared}},\qquad
-Y_{\mathrm{individual}}=((ZW_1)\odot S)W_2+B.
-$$
+```math
+\begin{aligned}
+Y_{\mathrm{shared}} &= ZW_{\mathrm{shared}} + b_{\mathrm{shared}}, \\
+Y_{\mathrm{individual}} &= ((ZW_1)\odot S)W_2 + B.
+\end{aligned}
+```
 
-Here $N$ is the number of channels, $E$ the feature width, $P$ the forecast horizon, and $K$ the adaptation rank. The individual head shares $W_1\in\mathbb{R}^{E\times K}$ and $W_2\in\mathbb{R}^{K\times P}$, with channel-specific coefficients $S\in\mathbb{R}^{N\times K}$ and biases $B\in\mathbb{R}^{N\times P}$.
+Here $`N`$ is the number of channels, $`E`$ the feature width, $`P`$ the forecast horizon, and $`K`$ the adaptation rank. The individual head shares $`W_1\in\mathbb{R}^{E\times K}`$ and $`W_2\in\mathbb{R}^{K\times P}`$, with channel-specific coefficients $`S\in\mathbb{R}^{N\times K}`$ and biases $`B\in\mathbb{R}^{N\times P}`$.
 
-AF-Gate pools the features across channels and predicts channel and horizon factors for each of its $M$ heads:
+AF-Gate pools the features across channels and predicts channel and horizon factors for each of its $`M`$ heads:
 
-$$
+```math
 G=\sum_{m=1}^{M}\pi_m\,g_{c,m}g_{p,m}^{\top},\qquad
 \pi=\operatorname{softmax}(\rho).
-$$
+```
 
-Sigmoid factors and normalized head weights give $G\in[0,1]^{N\times P}$. The normalized forecast is
+Sigmoid factors and normalized head weights give $`G\in[0,1]^{N\times P}`$. The normalized forecast is
 
-$$
+```math
 \widehat{Y}=G\odot Y_{\mathrm{shared}}+(1-G)\odot Y_{\mathrm{individual}}.
-$$
+```
 
-Inverse RevIN restores the input scale. The individual head uses $EK+KP+NK+NP$ parameters, compared with $N(EP+P)$ for independent dense heads. This saving concerns the individual head, not the entire model.
+Inverse RevIN restores the input scale. The individual head uses $`EK+KP+NK+NP`$ parameters, compared with $`N(EP+P)`$ for independent dense heads. This saving concerns the individual head, not the entire model.
 
 ## Quick Start
 
@@ -122,21 +120,21 @@ Inputs have shape `[batch, lookback, channels]`; outputs have shape `[batch, hor
 | `seq_len` | 96 in the paper | Historical input length |
 | `pred_len` | 96 / 192 / 336 / 720 | Forecast horizon |
 | `enc_in` | Dataset-dependent | Number of input channels |
-| `d_model` | 512 in the paper | Feature width $E$ |
-| Backbone hidden width | 128, fixed in `Backbone` | Intermediate MLP width $D$ |
+| `d_model` | 512 in the paper | Feature width $`E`$ |
+| Backbone hidden width | 128, fixed in `Backbone` | Intermediate MLP width $`D`$ |
 | `low_rank_k` | `int(0.3 * E * P / (E + P))` | Optional rank override |
-| Gate hidden width | 16, fixed by `Model` | Gate bottleneck $R$ |
+| Gate hidden width | 16, fixed by `Model` | Gate bottleneck $`R`$ |
 | Gate heads | 8 | Number of channel–horizon outer products |
 | Gate dropout | 0.1 | Dropout inside AF-Gate |
 | `use_norm` | Required config field; use `1` | Enable RevIN |
 
-With $E=512$, the default ranks are 24, 41, 60, and 89 for the four paper horizons. The code does not clamp the default rank to at least one; use a positive `low_rank_k` for very small custom configurations.
+With $`E=512`$, the default ranks are 24, 41, 60, and 89 for the four paper horizons. The code does not clamp the default rank to at least one; use a positive `low_rank_k` for very small custom configurations.
 
 The model also accepts `use_temporal_emb`, `use_attention`, `use_gate`, `use_shared_branch`, and `use_individual_branch`; these default to `True`. At least one prediction branch must remain enabled. These are configuration attributes, not verified command-line flags.
 
 ## Main Results
 
-**Paper-reported results**, transcribed from Table 1 of the supplied manuscript. Values are averaged over $P\in\{96,192,336,720\}$ with lookback $L=96$. Lower MSE and MAE are better. These numbers were not regenerated during repository preparation.
+**Paper-reported results**, transcribed from Table 1 of the supplied manuscript. Values are averaged over $`P\in\{96,192,336,720\}`$ with lookback $`L=96`$. Lower MSE and MAE are better. These numbers were not regenerated during repository preparation.
 
 | Dataset | GateLinear MSE | GateLinear MAE | XLinear MSE | XLinear MAE |
 |:--|--:|--:|--:|--:|
@@ -158,7 +156,7 @@ Bold indicates the better value within this two-model comparison, including ties
 
 ### Parameter efficiency
 
-Table 3 reports the following at $L=P=96$:
+Table 3 reports the following at $`L=P=96`$:
 
 | Dataset | Model | MSE | MAE | Parameters |
 |:--|:--|--:|--:|--:|
@@ -176,7 +174,7 @@ Dataset files, checkpoints, generated predictions, and training logs are exclude
 
 The supplied data factory recognizes `ETTh1`, `ETTh2`, `ETTm1`, `ETTm2`, `custom`, `Solar`, and `PEMS`. Weather, Electricity, Traffic, and Exchange use the custom CSV loader. Inspect [data_loader.py](data_provider/data_loader.py) for the expected columns, splits, and normalization of each format.
 
-The manuscript specifies Adam with $(\beta_1,\beta_2)=(0.9,0.999)$, epsilon $10^{-8}$, no weight decay, MSE loss, at most 30 epochs, early-stopping patience 5, and seed 2027 for Python, NumPy, and PyTorch.
+The manuscript specifies Adam with $`(\beta_1,\beta_2)=(0.9,0.999)`$, epsilon $`10^{-8}`$, no weight decay, MSE loss, at most 30 epochs, early-stopping patience 5, and seed 2027 for Python, NumPy, and PyTorch.
 
 | Dataset family | Learning rate | Batch size |
 |:--|--:|--:|
@@ -228,18 +226,16 @@ GateLinear/
 Use the following manuscript citation until a verified proceedings or preprint record is available. No venue, year, or identifier has been inferred from the local filename.
 
 ```bibtex
-@unpublished{pu_gatelinear,
+@misc{gatelinear,
   title  = {Learning When to Share: Adaptive Channel--Horizon Sharing
             for Long-Term Time-Series Forecasting},
-  author = {Pu, Shiwei and Zhang, Yuanjian and Luo, Jingwei and
-            Xu, Xiang and Wu, Yuxun and Liu, Chuanchang},
   note   = {Manuscript accompanying the GateLinear source release},
   url    = {https://github.com/chaserd/GateLinear}
 }
 ```
 
-## Acknowledgments and Contact
+## Acknowledgments
 
 The source tree includes implementations of several forecasting baselines and shared forecasting utilities. Please credit the original methods and retain applicable upstream notices when reusing those components. The supplied snapshot has no top-level license file; this release does not assign a new license to third-party source.
 
-For repository questions, open an issue. The manuscript lists Chuanchang Liu as the corresponding author: **lcc3265@bupt.edu.cn**.
+For repository questions, open an issue.
